@@ -20,6 +20,10 @@ import staticRouter from './static';
 app.options('/static');
 app.use('/static', staticRouter);
 
+import postsRouter from './posts';
+app.options('/static');
+app.use('/posts', postsRouter);
+
 /*const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
 	limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).

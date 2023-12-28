@@ -33,6 +33,9 @@ Musimy też mieć sprawne narzędzie curl, które jest dostępne na Windowsie i 
 Na naszym serwerze dostępne są następujące endpointy:
 - GET /static/version
 - GET /auth/protected
+- POST /posts/v1
+- GET /posts/v1
+- DELETE /posts/v1/:postId
 
 Adres serwera to `http://localhost:9030/`.
 
@@ -103,4 +106,74 @@ app.use('/static', limiter, staticRouter);
 ```
 
 Zabezpiecz endpointy zaczynające się od `/auth`, tak aby przez 15 minut dany adres IP mógł wykonać tylko 100 zapytań.
+
+## Zadanie 3 - używanie ORM
+Większość problemów z bezpieczeństwem wynika z pomyłek programistów. Im bardziej nasz framework chroni nas przed prostymi pomyłkami, tym mniejsza szansa że popełnimy błąd, a co za tym idzie - tym większe bezpieczeństwo aplikacji. **Używanie ORM samo w sobie nie zwiększa bezpieczeństwa naszej aplikacji**, ale ponieważ oferuje mechanizm automatycznej serializacji i deserializacji, warto zdecydować się na to rozwiązanie aby uniknąć wprowadzania bugów. A co za tym idzie - pośrednio zwiększyć bezpieczeństwo aplikacji.
+
+My jako nasz ORM użyjemy [Prisma](https://www.prisma.io/).
+
+### Jak wygląda API do obsługi postów
+Aktualnie do obsługi postów mamy następujące endpointy:
+- POST /posts/v1 - tworzy posta z zawartością podaną w body zapytania
+- GET /posts/v1 - wyświetla wszystkie posty
+- DELETE /posts/v1/:postId - usuwa posta o danym ID
+
+Możemy przestestować nasze API w następujący sposób:
+```bash
+curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data 'Zawartość posta'
+curl -vvv -X GET http://localhost:9030/posts/v1
+curl -vvv -X DELETE http://localhost:9030/posts/v1/[id dowolnego posta z poprzedniej komendy]
+curl -vvv -X GET http://localhost:9030/posts/v1
+```
+
+Naszym zadaniem będzie najpierw przeprowadzić atak, a potem załatać podatność poprzez użycie ORM zamiast surowych zapytań SQL.
+
+### Atak
+Dodajmy kilka postów.
+```bash
+curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data 'Post Nummer eins'
+curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data 'Post Nummer zwei'
+curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data 'Post Nummer drei'
+curl -vvv -X GET http://localhost:9030/posts/v1
+```
+
+Spróbujmy zrobić SQL Injection, które skasuje wszystkie posty z bazy danych.
+```bash
+curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data "'; DELETE FROM Post; -- Zawartość posta'"
+curl -vvv -X GET http://localhost:9030/posts/v1
+```
+
+Niedobrze, bardzo niedobrze...
+
+### Jak zainstalować Prisma
+Zaczynamy od zainstalowania Prisma.
+
+```bash
+npx prisma init --datasource-provider sqlite
+```
+
+Otwieramy nowo stworzony plik `.env` i zastępujemy linijkę
+```
+DATABASE_URL="file:./dev.db"
+```
+na
+```
+DATABASE_URL="file:./database.db"
+```
+W ten sposób Prisma będzie używać bazy danych którą już mamy.
+
+Teraz musimy "zassać" bazę danych do Prismy, tak żeby wiedziała jak wygenerować kod JavaScript odpowiedni do tego co w niej mamy. Na szczęście można to zrobić jedną komendą: `npx prisma db pull`.
+
+Otwórz plik `prisma/schema.prisma` i zobacz że jest w nim pseudo-SQL który odpowiada zawartości naszej bazy danych.
+
+W tym momencie Prisma jest gotowa do użycia.
+
+### Implementacja Prismy
+Zaczynamy od dodania w każdym pliku w którym będziemy używać Prismy tych linijek na początku pliku:
+```javascript
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+```
+W naszym przypadku jest to plik `posts.ts`.
 
