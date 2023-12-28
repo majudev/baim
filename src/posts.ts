@@ -11,7 +11,7 @@ router.post('/v1', bodyParser.text({type: 'text/plain'}), async (req: Request, r
     const postContent = req.body as string;
     logger.info('postContent: ' + postContent);
     const db = await open({
-        filename: 'prisma/database.db',
+        filename: 'database.db',
         driver: sqlite3.Database
     })
     await db.exec('INSERT INTO "Post" (`postContent`) VALUES (\'' + postContent + '\')');
@@ -23,7 +23,7 @@ router.post('/v1', bodyParser.text({type: 'text/plain'}), async (req: Request, r
 
 router.get('/v1', async (req: Request, res: Response) => {
     const db = await open({
-        filename: 'prisma/database.db',
+        filename: 'database.db',
         driver: sqlite3.Database
     })
     const result = await db.all('SELECT postId,postContent FROM "Post"');
@@ -40,7 +40,7 @@ router.delete('/v1/:postId', async (req: Request, res: Response) => {
     const postId = req.params.postId;
 
     const db = await open({
-        filename: 'prisma/database.db',
+        filename: 'database.db',
         driver: sqlite3.Database
     })
     await db.exec('DELETE FROM "Post" WHERE postId=\'' + postId + '\'');
