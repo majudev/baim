@@ -158,13 +158,21 @@ DATABASE_URL="file:./dev.db"
 ```
 na
 ```
-DATABASE_URL="file:./database.db"
+DATABASE_URL="file:../database.db"
 ```
 W ten sposób Prisma będzie używać bazy danych którą już mamy.
 
-Teraz musimy "zassać" bazę danych do Prismy, tak żeby wiedziała jak wygenerować kod JavaScript odpowiedni do tego co w niej mamy. Na szczęście można to zrobić jedną komendą: `npx prisma db pull`.
+Teraz musimy "zassać" bazę danych do Prismy, tak żeby wiedziała jak wygenerować kod JavaScript odpowiedni do tego co w niej mamy. Na szczęście można to zrobić jedną komendą: 
+```bash
+npx prisma db pull
+```
 
 Otwórz plik `prisma/schema.prisma` i zobacz że jest w nim pseudo-SQL który odpowiada zawartości naszej bazy danych.
+
+Teraz musimy poprosić Prismę o wygenerowanie odpowiednich bibliotek JavaScript:
+```bash
+npx prisma generate
+```
 
 W tym momencie Prisma jest gotowa do użycia.
 
@@ -181,6 +189,8 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 ```
 W naszym przypadku jest to plik `posts.ts`.
+
+Zauważ, że po wpisaniu `prisma.` VS Code sam podpowie nam składnie. Ponieważ pracujemy na obiekcie Post, właściwą składnią jest `prisma.post.` - nazwy metod są intuicyjne, na pewno sobie poradzisz. Dokumentacja jest dostępna na stronie Prismy.
 
 Przykładowe implementacje:
 ```javascript
