@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import requestLogger from './utils/requestLogger';
-import basicAuth from 'express-basic-auth';
 import { rateLimit } from 'express-rate-limit'
+import basicAuth from 'express-basic-auth';
 
 const app = express();
 
@@ -10,13 +10,17 @@ app.use(requestLogger);
 
 import authRouter from './auth';
 app.options('/auth');
-app.use('/auth', authRouter);
+app.use('/auth', basicAuth({
+	users: { 'admin': 'fantastic4' },
+	challenge: true,
+    realm: 'BAIM',
+}), authRouter);
 
-app.use(basicAuth({
-    users: { 'admin': 'supersecret' }
-}));
+import staticRouter from './static';
+app.options('/static');
+app.use('/static', staticRouter);
 
-const limiter = rateLimit({
+/*const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
 	limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
 	standardHeaders: 'draft-7', // draft-6: `RateLimit-*` headers; draft-7: combined `RateLimit` header
@@ -25,7 +29,7 @@ const limiter = rateLimit({
 });
 
 // Apply the rate limiting middleware to all requests.
-app.use(limiter);
+app.use(limiter);*/
 
 const port = 9030;
 app.listen(port, () => {
