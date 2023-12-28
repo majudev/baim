@@ -139,11 +139,11 @@ curl -vvv -X GET http://localhost:9030/posts/v1
 
 Spróbujmy zrobić SQL Injection, które skasuje wszystkie posty z bazy danych.
 ```bash
-curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data "'; DELETE FROM Post; -- Zawartość posta'"
+curl -vvv -X POST http://localhost:9030/posts/v1 -H 'Content-Type: text/plain' --data "xxx'); DELETE FROM \"Post\"; -- Zawartość posta"
 curl -vvv -X GET http://localhost:9030/posts/v1
 ```
 
-Niedobrze, bardzo niedobrze...
+Posty zostały skasowane. Niedobrze, bardzo niedobrze...
 
 ### Jak zainstalować Prisma
 Zaczynamy od zainstalowania Prisma.
@@ -169,6 +169,11 @@ Otwórz plik `prisma/schema.prisma` i zobacz że jest w nim pseudo-SQL który od
 W tym momencie Prisma jest gotowa do użycia.
 
 ### Implementacja Prismy
+Stworzymy endpointy działajace identycznie do /v1 ale z nazwą /v2, czyli
+- POST /posts/v2 - tworzy posta z zawartością podaną w body zapytania
+- GET /posts/v2 - wyświetla wszystkie posty
+- DELETE /posts/v2/:postId - usuwa posta o danym ID
+
 Zaczynamy od dodania w każdym pliku w którym będziemy używać Prismy tych linijek na początku pliku:
 ```javascript
 import { PrismaClient } from '@prisma/client'
@@ -177,3 +182,67 @@ const prisma = new PrismaClient()
 ```
 W naszym przypadku jest to plik `posts.ts`.
 
+Przykładowe implementacje:
+```javascript
+router.post('/v2', bodyParser.text({type: 'text/plain'}), async (req: Request, res: Response) => {
+    try{
+        const postContent = req.body as string;
+        logger.info('postContent: ' + JSON.stringify(postContent));
+        const newPost = await prisma.post.create({
+            data: {
+                postContent: postContent,
+            },
+            select: {
+                postContent: true,
+            }
+        });
+        res.status(200).json({
+            status: "success",
+            postContent: newPost.postContent,
+        });
+    }catch(e){
+        res.status(500).json({
+            status: "error",
+            details: JSON.stringify(e),
+        });
+    }
+});
+
+router.get('/v2', async (req: Request, res: Response) => {
+    try{
+        const allPosts = await prisma.post.findMany({
+
+        });
+        res.status(200).json({
+            status: "success",
+            posts: allPosts,
+        });
+    }catch(e){
+        res.status(500).json({
+            status: "error",
+            details: JSON.stringify(e),
+        });
+    }
+});
+
+router.delete('/v2/:postId', async (req: Request, res: Response) => {
+    try{
+        const postId = Number.parseInt(req.params.postId);
+        
+        await prisma.post.delete({
+            where: {
+                postId: postId,
+            }
+        });
+
+        res.status(204).end();
+    }catch(e){
+        res.status(500).json({
+            status: "error",
+            details: JSON.stringify(e),
+        });
+    }
+});
+```
+
+Jeśli wszystko zrobiłeś poprawnie, to ataki z poprzedniego punktu nie powinny tym razem zadziałać.
